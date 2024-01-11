@@ -1,0 +1,176 @@
+#pragma kernel CSMain
+
+#include "SDFShapes.cginc"
+#include "SDFOperations.cginc"
+
+Texture2D<float4> Source;
+
+RWTexture2D<float4> Destination;
+
+float4x4 cameraToWorld;
+float4x4 cameraInverseProjection;
+
+float maxDistance;
+int maxIterations;
+
+float3 lightDirection;
+float3 lightColor;
+float lightIntensity;
+
+static const float epsilon = 0.0001;
+
+struct Ray{
+    float3 origin;
+    float3 direction;
+    float rayLength;
+};
+
+struct Shape
+{
+    float3 position;
+    float3 scale;
+    float3 rotation;
+    float3 color;
+    float4 data;
+    int shapeType;
+    int operationType;
+    float blendStrength;
+};
+
+StructuredBuffer<Shape> shapes;
+int shapesCount;
+
+Ray CreateRay(float3 origin, float3 direction, float rayLength){
+    Ray ray;
+    ray.origin = origin;
+    ray.direction = direction;
+    ray.rayLength = rayLength;
+    return ray;
+}
+
+Ray CreateCameraRay(float2 uv)
+{
+    float3 origin = mul(cameraToWorld, float4(0, 0, 0, 1)).xyz;
+    float3 direction = mul(cameraInverseProjection, float4(uv, 0, 1)).xyz;
+    float rayLength = length(direction);
+    direction = mul(cameraToWorld, float4(direction, 0)).xyz;
+    direction = normalize(direction);
+    
+    return CreateRay(origin, direction, rayLength);
+}
+
+float CalculateShape(Shape shape, float3 eye)
+{
+    if (shape.shapeType == 0)
+    {
+        return SDFSphere(eye, shape.position, shape.data.x, shape.rotation, shape.scale);
+    }
+    else if (shape.shapeType == 1)
+    {
+        return SDFCube(eye, shape.position, shape.scale, shape.rotation);
+    }
+    
+    return maxDistance;
+}
+
+float4 CalculateOperation(float distanceA, float distanceB, float3 colorA, float3 colorB, int operationType, float blendStrength)
+{
+    if (operationType == 0)
+    {
+        return OperationUnion(distanceA, distanceB, colorA, colorB);
+    }
+    else if (operationType == 1)
+    {
+        return OperationSubtraction(distanceA, distanceB, colorA, colorB);
+    }
+    else if (operationType == 2)
+    {
+        return OperationIntersection(distanceA, distanceB, colorA, colorB);
+    }
+    
+    return float4(colorA, distanceA);
+}
+
+float4 CalculateSDF(float3 eye)
+{
+    float globalDistance = maxDistance;
+    float3 globalColor = 1;
+    
+    for (int i = 0; i < shapesCount; i++)
+    {
+        Shape shape = shapes[i];
+        
+        float distance = CalculateShape(shape, eye);
+        
+        float4 operation = CalculateOperation(globalDistance, distance, globalColor, shape.color, shape.operationType, shape.blendStrength);
+        globalColor = operation.xyz;
+        globalDistance = operation.w;
+    }
+    
+    return float4(globalColor, globalDistance);
+}
+
+float3 CalculateNormal(float3 p)
+{
+    float2 offset = float2(epsilon, 0);
+    
+    float x = CalculateSDF(p + offset.xyy).w - CalculateSDF(p - offset.xyy).w;
+    float y = CalculateSDF(p + offset.yxy).w - CalculateSDF(p - offset.yxy).w;
+    float z = CalculateSDF(p + offset.yyx).w - CalculateSDF(p - offset.yyx).w;
+    
+    return normalize(float3(x, y, z));
+}
+
+float4 CalculateScene(Ray ray)
+{
+    float4 result = 1;
+    
+    float totalDistance = 0;
+    
+    for (int i = 0; i < maxIterations; i++)
+    {
+        if (totalDistance >= maxDistance)
+        {
+            result = 0;
+            break;
+        }
+        
+        float3 p = ray.origin + ray.direction * totalDistance;
+        
+        float4 sdf = CalculateSDF(p);
+        
+        float distance = sdf.w;
+        
+        if (distance <= epsilon)
+        {
+            float3 normal = CalculateNormal(p);
+            
+            float3 light = lightColor * (dot(-lightDirection, normal) * 0.5 + 0.5) * lightIntensity;
+            
+            result = float4(sdf.rgb * light, 1);
+            break;
+        }
+        
+        totalDistance += distance;
+    }
+    
+    return result;
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    Source.GetDimensions(width, height);
+    
+    float2 uv = (id.xy / float2(width, height)) * 2 - 1;
+    
+    Ray cameraRay = CreateCameraRay(uv);
+    
+    float4 result = CalculateScene(cameraRay);
+    
+    if(result.w > 0)
+        Destination[id.xy] = float4(result.xyz, 1);
+    else
+        Destination[id.xy] = Source[id.xy];
+}

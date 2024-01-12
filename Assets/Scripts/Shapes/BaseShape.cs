@@ -47,7 +47,11 @@ public enum ShapeType
 {
     Sphere,
     Cube,
-    Plane
+    Plane,
+    RoundBox,
+    BoxFrame,
+    Torus,
+    Capsule
 }
 
 public enum OperationType

@@ -88,6 +88,22 @@ float CalculateShape(Shape shape, float3 eye)
     {
         return SDFPlane(eye, shape.data.xyz, shape.data.w);
     }
+    else if (shape.shapeType == 3)
+    {
+        return SDFRoundBox(eye, shape.position, shape.scale, shape.data.x, shape.rotation);
+    }
+    else if (shape.shapeType == 4)
+    {
+        return SDFBoxFrame(eye, shape.position, shape.scale, shape.data.x, shape.rotation);
+    }
+    else if (shape.shapeType == 5)
+    {
+        return SDFTorus(eye, shape.position, shape.data.xy, shape.rotation, shape.scale);
+    }
+    else if (shape.shapeType == 6)
+    {
+        return SDFCapsule(eye, shape.position, shape.data.x, shape.data.y, shape.scale, shape.rotation);
+    }
     
     return maxDistance;
 }

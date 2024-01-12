@@ -8,6 +8,8 @@ public abstract class BaseShape : MonoBehaviour
     public abstract ShapeType ShapeType { get; }
 
     public OperationType operationType;
+
+    [Range(0, 1)]
     public float blendStrength;
 
     [SerializeField, ColorUsage(false)]
@@ -44,12 +46,15 @@ public abstract class BaseShape : MonoBehaviour
 public enum ShapeType
 {
     Sphere,
-    Cube
+    Cube,
+    Plane
 }
 
 public enum OperationType
 {
     Union,
     Subtraction,
-    Intersection
+    Intersection,
+    SmoothUnion,
+    SmoothSubtraction
 }

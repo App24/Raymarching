@@ -48,3 +48,8 @@ float SDFCube(float3 eye, float3 p, float3 scale, float3 rotation)
     
     return ud+n;
 }
+
+float SDFPlane(float3 eye, float3 axis, float height)
+{
+    return dot(eye, normalize(axis)) + height;
+}

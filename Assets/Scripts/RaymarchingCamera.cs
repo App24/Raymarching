@@ -18,6 +18,39 @@ public class RaymarchingCamera : MonoBehaviour
     [SerializeField]
     private int maxIterations = 512;
 
+    [Header("Shadows")]
+
+    [SerializeField]
+    private bool useSoftShadows = true;
+
+    [SerializeField]
+    [Range(1, 128)]
+    private float shadowPenumbra;
+
+    [SerializeField]
+    [Range(0, 4)]
+    private float shadowIntensity;
+
+    [SerializeField]
+    private Vector2 shadowDistance = new Vector2(0.1f, 20);
+
+    [Header("Ambient Occlusion")]
+
+    [SerializeField]
+    private bool aoEnabled = true;
+
+    [SerializeField]
+    [Range(0.01f, 10f)]
+    private float aoStepSize;
+
+    [SerializeField]
+    [Range(1, 5)]
+    private int aoIterations;
+
+    [SerializeField]
+    [Range(0,1)]
+    private float aoIntensity;
+
     private Camera m_cam;
     public Camera Camera
     {
@@ -48,6 +81,7 @@ public class RaymarchingCamera : MonoBehaviour
         SetParameters();
         LoadLight();
 
+        raymarchingShader.SetTexture(0, "_CameraDepthTexture", Shader.GetGlobalTexture("_CameraDepthTexture"));
         raymarchingShader.SetTexture(0, "Source", source);
         raymarchingShader.SetTexture(0, "Destination", target);
 
@@ -83,6 +117,16 @@ public class RaymarchingCamera : MonoBehaviour
 
         raymarchingShader.SetFloat("maxDistance", maxDistance);
         raymarchingShader.SetInt("maxIterations", maxIterations);
+
+        raymarchingShader.SetFloat("shadowIntensity", shadowIntensity);
+        raymarchingShader.SetFloat("shadowPenumbra", shadowPenumbra);
+        raymarchingShader.SetBool("softShadows", useSoftShadows);
+        raymarchingShader.SetVector("shadowDistance", shadowDistance);
+
+        raymarchingShader.SetFloat("aoStepSize", aoStepSize);
+        raymarchingShader.SetFloat("aoIntensity", aoIntensity);
+        raymarchingShader.SetInt("aoIterations", aoIterations);
+        raymarchingShader.SetBool("aoEnabled", aoEnabled);
     }
 
     private void LoadShapes()

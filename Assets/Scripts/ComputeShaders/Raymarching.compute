@@ -2,8 +2,10 @@
 
 #include "SDFShapes.cginc"
 #include "SDFOperations.cginc"
+#include "UnityCG.cginc"
 
 Texture2D<float4> Source;
+Texture2D<float4> _CameraDepthTexture;
 
 RWTexture2D<float4> Destination;
 
@@ -13,9 +15,22 @@ float4x4 cameraInverseProjection;
 float maxDistance;
 int maxIterations;
 
+// Light Data
 float3 lightDirection;
 float3 lightColor;
 float lightIntensity;
+
+// Shadows
+bool softShadows;
+float2 shadowDistance;
+float shadowIntensity;
+float shadowPenumbra;
+
+// Ambient Occlusion
+bool aoEnabled;
+float aoStepSize;
+float aoIntensity;
+int aoIterations;
 
 static const float epsilon = 0.0001;
 
@@ -69,6 +84,10 @@ float CalculateShape(Shape shape, float3 eye)
     {
         return SDFCube(eye, shape.position, shape.scale, shape.rotation);
     }
+    else if (shape.shapeType == 2)
+    {
+        return SDFPlane(eye, shape.data.xyz, shape.data.w);
+    }
     
     return maxDistance;
 }
@@ -86,6 +105,14 @@ float4 CalculateOperation(float distanceA, float distanceB, float3 colorA, float
     else if (operationType == 2)
     {
         return OperationIntersection(distanceA, distanceB, colorA, colorB);
+    }
+    else if (operationType == 3)
+    {
+        return OperationSmoothUnion(distanceA, distanceB, colorA, colorB, blendStrength);
+    }
+    else if (operationType == 4)
+    {
+        return OperationSmoothSubtraction(distanceA, distanceB, colorA, colorB, blendStrength);
     }
     
     return float4(colorA, distanceA);
@@ -121,7 +148,71 @@ float3 CalculateNormal(float3 p)
     return normalize(float3(x, y, z));
 }
 
-float4 CalculateScene(Ray ray)
+float HardShadows(Ray ray, float minDst, float maxDst)
+{
+    for (float t = minDst; t < maxDst;)
+    {
+        float h = CalculateSDF(ray.origin + ray.direction * t).w;
+        if (h <= epsilon)
+            return 0;
+        t += h;
+    }
+    return 1;
+}
+
+float SoftShadows(Ray ray, float minDst, float maxDst, float k)
+{
+    float result = 1;
+    for (float t = minDst; t < maxDst;)
+    {
+        float h = CalculateSDF(ray.origin + ray.direction * t).w;
+        if (h <= epsilon)
+            return 0;
+        result = min(result, k * h / t);
+        t += h;
+    }
+    return result;
+}
+
+float CalculateAO(float3 p, float3 normal)
+{
+    if (!aoEnabled)
+        return 1;
+    float step = aoStepSize;
+    float ao = 0;
+    float dist;
+    for (int i = 1; i < aoIterations; i++)
+    {
+        dist = step * i;
+        ao += max(0, (dist - CalculateSDF(p + normal * dist).w)) / dist;
+
+    }
+    return (1 - ao * aoIntensity);
+}
+
+float DoShading(float3 p)
+{
+    float3 normal = CalculateNormal(p);
+            
+    float3 light = lightColor * (dot(-lightDirection, normal) * 0.5 + 0.5) * lightIntensity;
+    
+    float shadow = 1;
+    if (softShadows)
+    {
+        shadow = SoftShadows(CreateRay(p, -lightDirection, 0), shadowDistance.x, shadowDistance.y, shadowPenumbra) * 0.5 + 0.5;
+    }
+    else
+    {
+        shadow = HardShadows(CreateRay(p, -lightDirection, 0), shadowDistance.x, shadowDistance.y) * 0.5 + 0.5;
+    }
+    shadow = max(0, pow(shadow, shadowIntensity));
+    
+    float ao = CalculateAO(p, normal);
+    
+    return light * shadow * ao;
+}
+
+float4 CalculateScene(Ray ray, float depth)
 {
     float4 result = 1;
     
@@ -129,7 +220,7 @@ float4 CalculateScene(Ray ray)
     
     for (int i = 0; i < maxIterations; i++)
     {
-        if (totalDistance >= maxDistance)
+        if (totalDistance >= maxDistance || totalDistance >= depth)
         {
             result = 0;
             break;
@@ -142,12 +233,10 @@ float4 CalculateScene(Ray ray)
         float distance = sdf.w;
         
         if (distance <= epsilon)
-        {
-            float3 normal = CalculateNormal(p);
+        {            
+            float shading = DoShading(p);
             
-            float3 light = lightColor * (dot(-lightDirection, normal) * 0.5 + 0.5) * lightIntensity;
-            
-            result = float4(sdf.rgb * light, 1);
+            result = float4(sdf.rgb * shading, totalDistance);
             break;
         }
         
@@ -167,7 +256,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     
     Ray cameraRay = CreateCameraRay(uv);
     
-    float4 result = CalculateScene(cameraRay);
+    float depth = LinearEyeDepth(_CameraDepthTexture[id.xy].r);
+    depth *= cameraRay.rayLength;
+    
+    float4 result = CalculateScene(cameraRay, depth);
     
     if(result.w > 0)
         Destination[id.xy] = float4(result.xyz, 1);

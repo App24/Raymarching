@@ -165,7 +165,7 @@ Transform:
   m_GameObject: {fileID: 55299786}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -4.56}
+  m_LocalPosition: {x: 0, y: 0, z: 4.45}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -313,6 +313,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!1 &826881498
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 826881500}
+  - component: {fileID: 826881499}
+  m_Layer: 0
+  m_Name: Plane
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!114 &826881499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 826881498}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c60c5f2bc219a44485e637b37f236ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  operationType: 0
+  blendStrength: 0
+  color: {r: 1, g: 1, b: 1, a: 0}
+  axis: {x: 0, y: 1, z: 0}
+  height: -2.6
+--- !u!4 &826881500
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 826881498}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -420,8 +469,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   raymarchingShader: {fileID: 7200000, guid: a84ba435801d67f488ed8f7504b9454d, type: 3}
   sunLight: {fileID: 705507994}
-  maxDistance: 500
-  maxIterations: 512
+  maxDistance: 200
+  maxIterations: 256
+  useSoftShadows: 1
+  shadowPenumbra: 3.1
+  shadowIntensity: 0.55
+  shadowDistance: {x: 0.1, y: 70.9}
+  aoEnabled: 1
+  aoStepSize: 0.45
+  aoIterations: 3
+  aoIntensity: 0.197
 --- !u!1 &1746786468
 GameObject:
   m_ObjectHideFlags: 0
@@ -463,7 +520,7 @@ Transform:
   m_GameObject: {fileID: 1746786468}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 9.74}
+  m_LocalPosition: {x: 0, y: 0.45, z: 11.38}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -478,3 +535,4 @@ SceneRoots:
   - {fileID: 586899146}
   - {fileID: 55299788}
   - {fileID: 1746786470}
+  - {fileID: 826881500}
